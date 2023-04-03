@@ -10,6 +10,7 @@ from selenium.webdriver.common.by import By
 import pandas as pd
 import time
 from tqdm import tqdm
+from selenium.common.exceptions import NoSuchElementException
 
 
 def remove_duplicates_from_list(given_list):
@@ -135,10 +136,14 @@ def open_next_pages_set(driver, google_result_set, number_of_results_sets_to_che
                                             to another set of results; adjust this variable to your needs
     """
     if google_result_set < number_of_results_sets_to_check - 1:  # don't click it at the last checked result set
-        next_page_set_xpath = "/html/body/div[7]/div/div[11]/div/div[4]/div/div[2]/table/tbody/tr/td[{}]/a".format(
-            google_result_set + 3)
-        next_page_set_button = driver.find_element(By.XPATH, next_page_set_xpath)
-        next_page_set_button.click()
+        div_number = google_result_set + 3
+        try:
+            next_page_set_xpath = "/html/body/div[7]/div/div[11]/div/div[4]/div/div[2]/table/tbody/tr/td[{}]/a".format(
+                div_number)
+            next_page_set_button = driver.find_element(By.XPATH, next_page_set_xpath)
+            next_page_set_button.click()
+        except NoSuchElementException:  # spelling error making this code not work as expected
+            pass
 
 
 def click_accept_cookies_button(driver, search_google_url):
@@ -179,7 +184,8 @@ def run_scrapper(search_google_url, list_of_queries_to_search, number_of_results
     driver = webdriver.Chrome(ChromeDriverManager().install())
     click_accept_cookies_button(driver, search_google_url)
 
-    for query in list_of_queries_to_search:
+    for query in tqdm(list_of_queries_to_search):
+        print("\nSTARTING SEARCH WITH QUERY: {}".format(query))
         links_from_query = collect_links_from_search_query(driver, query, search_google_url,
                                                            number_of_results_sets_to_check)
 
@@ -189,15 +195,17 @@ def run_scrapper(search_google_url, list_of_queries_to_search, number_of_results
         collected_links = {"links": links_from_query}
         save_the_dictionary("links", collected_links, query, number_of_results_sets_to_check, version)
 
-        # get html of each page
-        htmls_from_query = get_html_source_code_from_pages(driver, links_from_query)
-
-        # save the links with htmls into a Pandas DataFrame
-        collected_links_with_html_code = {'link': links_from_query, 'html': htmls_from_query}
-
-        save_the_dictionary("results", collected_links_with_html_code, query, number_of_results_sets_to_check, version)
+        # # get html of each page
+        # htmls_from_query = get_html_source_code_from_pages(driver, links_from_query)
+        #
+        # # save the links with htmls into a Pandas DataFrame
+        # collected_links_with_html_code = {'link': links_from_query, 'html': htmls_from_query}
+        #
+        # save_the_dictionary("results", collected_links_with_html_code, query, number_of_results_sets_to_check, version)
+        # save_the_dictionary("results", collected_links, query, number_of_results_sets_to_check, version)
 
     driver.close()
+
 
 if __name__ == '__main__':
     search_google_url = "https://www.google.pl/search?q="
@@ -205,11 +213,17 @@ if __name__ == '__main__':
     # adjust these parameters:
     list_of_words_to_find_on_webpage = ["Politechnika Gdańska",
                                         "Zarządzania i Ekonomii"]
-    list_of_queries_to_search = ["Politechnika Gdańska Wydział Zarządzania i Ekonomii",
-                                 "Politechnika Gdańska W ZiE"]
-    number_of_results_sets_to_check = 2  # number of "o"s to click at the bottom of the page in order to go to
+    list_of_queries_to_search = ["Politechnika Gdańska Wydział Zarządzania i Ekonomii social media",
+                                 "Politechnika Gdańska Wydział Zarządzania i Ekonomii",
+                                 "Politechnika Gdańska W ZiE",
+                                 "Politechnika Gdańska Wydział Zarządzania i Ekonomii facebook instagram twitter",
+                                 "Politechnika Gdańska Wydział Zarządzania i Ekonomii gazety artykuł",
+                                 "Politechnika Gdańska Wydział Zarządzania i Ekonomii praca naukowa",
+                                 "Google Scholar Politechnika Gdańska Wydział Zarządzania i Ekonomii"
+                                 ]
+    number_of_results_sets_to_check = 10  # number of "o"s to click at the bottom of the page in order to go to
     # another set of results
-    version = 4  # the version of files where the results are saved
+    version = 6  # the version of files where the results are saved
 
     # get the links and html source code
     run_scrapper(search_google_url, list_of_queries_to_search, number_of_results_sets_to_check, version)

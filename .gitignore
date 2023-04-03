@@ -131,3 +131,5 @@ dmypy.json
 
 .idea
 results/
+links/
+get_html_code_from_links.py
