@@ -11,6 +11,9 @@ import pandas as pd
 import time
 from tqdm import tqdm
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 def remove_duplicates_from_list(given_list):
@@ -44,7 +47,7 @@ def remove_elements_from_list_with_substring(given_list, substring):
     return [element for element in given_list if substring not in element]
 
 
-def save_the_dictionary(filename_beginning, dictionary, query, number_of_results_sets_to_check, version):
+def save_the_dictionary(filename_beginning, dictionary, query, number_of_results_sets_to_check, version, saving_directory='results/'):
     """
     Save a dictionary as a file to read. Data is exported with Pandas using export methods - DataFrame is saved as a *.csv file.
 
@@ -57,8 +60,7 @@ def save_the_dictionary(filename_beginning, dictionary, query, number_of_results
     """
     print("Saving the DataFrame with {}. It may take a while...".format(filename_beginning))
     df = pd.DataFrame(dictionary)
-    saving_directory = "results/"
-    filename = "{}__query_{}__sets_{}__version_{}".format(filename_beginning, query.replace(" ", "_"),
+    filename = "duck_{}__query_{}__sets_{}__version_{}".format(filename_beginning, query.replace(" ", "_"),
                                                           number_of_results_sets_to_check, version)
     # df.to_excel(saving_directory + filename + ".xlsx")  # works longer than "to_csv" method
     df.to_csv(saving_directory + filename + ".csv")
@@ -77,9 +79,17 @@ def get_html_source_code_from_pages(driver, links_from_query):
     htmls_from_query = []
     for link in tqdm(links_from_query):
         driver.get(link)
-        time.sleep(1)  # wait for the page to load
+
+        try:
+            ele = WebDriverWait(driver, 10).until(  # using explicit wait for 10 seconds
+                EC.presence_of_element_located((By.CSS_SELECTOR, "h2"))  # checking for the element with 'h2'as its CSS
+            )
+        except:
+            print("Timeout Exception: Page did not load within 10 seconds ->" + str(link) + str('\n'))
+
         html_code = driver.page_source
-        time.sleep(3)  # wait for the page to load
+        # html_code = html_code.replace("\n", " ")
+        html_code = html_code
         htmls_from_query.append(html_code)
 
     print("Finished getting the HTML source code from pages.")
@@ -113,7 +123,7 @@ def collect_links_from_search_query(driver, query, search_google_url, number_of_
 
         links = remove_nones_from_list(links)
         links = remove_duplicates_from_list(links)
-        links = remove_elements_from_list_with_substring(links, "google")
+        # links = remove_elements_from_list_with_substring(links, "google")
         links = remove_elements_from_list_with_substring(links, "youtube")
 
         print("Result set no.: {} - found {} links for search query: {}".format(google_result_set + 1, len(links),
@@ -209,10 +219,12 @@ def run_scrapper(search_google_url, list_of_queries_to_search, number_of_results
 
 if __name__ == '__main__':
     search_google_url = "https://www.google.pl/search?q="
+    # search_google_url = "https://duckduckgo.com/?q="
 
     # adjust these parameters:
-    list_of_words_to_find_on_webpage = ["Politechnika Gdańska",
-                                        "Zarządzania i Ekonomii"]
+    # list_of_words_to_find_on_webpage = ["Politechnika Gdańska",
+    #                                     "Zarządzania i Ekonomii"]
+
     list_of_queries_to_search = ["Politechnika Gdańska Wydział Zarządzania i Ekonomii social media",
                                  "Politechnika Gdańska Wydział Zarządzania i Ekonomii",
                                  "Politechnika Gdańska W ZiE",
@@ -221,6 +233,8 @@ if __name__ == '__main__':
                                  "Politechnika Gdańska Wydział Zarządzania i Ekonomii praca naukowa",
                                  "Google Scholar Politechnika Gdańska Wydział Zarządzania i Ekonomii"
                                  ]
+
+
     number_of_results_sets_to_check = 10  # number of "o"s to click at the bottom of the page in order to go to
     # another set of results
     version = 6  # the version of files where the results are saved

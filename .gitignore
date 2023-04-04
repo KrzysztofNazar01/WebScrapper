@@ -132,4 +132,6 @@ dmypy.json
 .idea
 results/
 links/
+clear_results
+*.csv
 get_html_code_from_links.py
