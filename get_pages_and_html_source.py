@@ -47,11 +47,12 @@ def remove_elements_from_list_with_substring(given_list, substring):
     return [element for element in given_list if substring not in element]
 
 
-def save_the_dictionary(filename_beginning, dictionary, query, number_of_results_sets_to_check, version, saving_directory='results/'):
+def save_the_dictionary(filename_beginning, dictionary, query, number_of_results_sets_to_check, version,
+                        saving_directory='results/'):
     """
     Save a dictionary as a file to read. Data is exported with Pandas using export methods - DataFrame is saved as a *.csv file.
 
-    :param filename_beginning: the type of results - only links or links with htmls
+    :param filename_beginning: the type of results - only links_google or links_google with htmls
     :param dictionary: the collected data
     :param query: the query searched in Google search
     :param number_of_results_sets_to_check: number of "o"s to click at the bottom of the page in order to go
@@ -61,7 +62,7 @@ def save_the_dictionary(filename_beginning, dictionary, query, number_of_results
     print("Saving the DataFrame with {}. It may take a while...".format(filename_beginning))
     df = pd.DataFrame(dictionary)
     filename = "duck_{}__query_{}__sets_{}__version_{}".format(filename_beginning, query.replace(" ", "_"),
-                                                          number_of_results_sets_to_check, version)
+                                                               number_of_results_sets_to_check, version)
     # df.to_excel(saving_directory + filename + ".xlsx")  # works longer than "to_csv" method
     df.to_csv(saving_directory + filename + ".csv")
     print("Finished saving the DataFrame with {}.".format(filename_beginning))
@@ -69,27 +70,29 @@ def save_the_dictionary(filename_beginning, dictionary, query, number_of_results
 
 def get_html_source_code_from_pages(driver, links_from_query):
     """
-    Get the html source code of each page from the list of links.
+    Get the html source code of each page from the list of links_google.
 
     :param driver: webdriver from Selenium
-    :param links_from_query: list of links collected from query results from the set number of results set
+    :param links_from_query: list of links_google collected from query results from the set number of results set
     :return: list of html code source
     """
     print("Getting the HTML source code from pages. This may take a while...")
     htmls_from_query = []
+    coutner = 1
+
     for link in tqdm(links_from_query):
         driver.get(link)
-
+        time.sleep(3)
         try:
-            ele = WebDriverWait(driver, 10).until(  # using explicit wait for 10 seconds
-                EC.presence_of_element_located((By.CSS_SELECTOR, "h2"))  # checking for the element with 'h2'as its CSS
+            ele = WebDriverWait(driver, 12).until(  # using explicit wait for 10 seconds
+                EC.presence_of_element_located((By.XPATH, "/html/body"))  # checking for the element with 'h2'as its CSS
             )
         except:
-            print("Timeout Exception: Page did not load within 10 seconds ->" + str(link) + str('\n'))
-
+            print(" " + str(coutner) + " Timeout Exception: Page did not load within 10 seconds ->" + str(link) + str('\n'))
+            coutner += 1
         html_code = driver.page_source
         # html_code = html_code.replace("\n", " ")
-        html_code = html_code
+        # print(html_code)
         htmls_from_query.append(html_code)
 
     print("Finished getting the HTML source code from pages.")
@@ -97,41 +100,49 @@ def get_html_source_code_from_pages(driver, links_from_query):
     return htmls_from_query
 
 
-def collect_links_from_search_query(driver, query, search_google_url, number_of_results_sets_to_check):
+def show_all_results(driver):
+    while True:
+        time.sleep(3)  # wait until the results are loaded
+        more_results = driver.find_elements(By.LINK_TEXT, "More Results")
+        if len(more_results) == 0:
+            break
+        more_results[0].click()
+
+
+def collect_links_from_search_query(driver, query, search_url, number_of_results_sets_to_check):
     """
-    Collect a list of links available on the page with search results.
-    The filtering of links can be adjusted - for example to remove links that contain a given substring.
+    Collect a list of links_google available on the page with search results.
+    The filtering of links_google can be adjusted - for example to remove links_google that contain a given substring.
 
     :param driver: webdriver from Selenium
     :param query: value searched in Google search
-    :param search_google_url: template for Google search url
+    :param search_url: template for Google search url
     :param number_of_results_sets_to_check: number of "o"s to click at the bottom of the page in order to go
                                             to another set of results; adjust this variable to your needs
-    :return: list of links collected from query results from the set number of results set
+    :return: list of links_google collected from query results from the set number of results set
     """
     links_from_query = []
-    search_query = search_google_url + query.replace(" ", "+")
+    search_query = search_url + query.replace(" ", "+")
     driver.get(search_query)  # open page with the search query
 
-    for google_result_set in tqdm(range(number_of_results_sets_to_check)):
-        time.sleep(2)  # wait until the results are loaded
-        results_list = driver.find_elements(By.TAG_NAME, 'a')
-        results_list = remove_nones_from_list(results_list)
-        links = []
-        for result in results_list:
-            links.append(result.get_attribute('href'))  # get the link out of the element
+    show_all_results(driver)
 
-        links = remove_nones_from_list(links)
-        links = remove_duplicates_from_list(links)
-        # links = remove_elements_from_list_with_substring(links, "google")
-        links = remove_elements_from_list_with_substring(links, "youtube")
+    results_list = driver.find_elements(By.TAG_NAME, 'a')
+    results_list = remove_nones_from_list(results_list)
+    links = []
+    for result in results_list:
+        links.append(result.get_attribute('href'))  # get the link out of the element
 
-        print("Result set no.: {} - found {} links for search query: {}".format(google_result_set + 1, len(links),
-                                                                                search_query))
+    links = remove_nones_from_list(links)
+    links = remove_duplicates_from_list(links)
+    # links_google = remove_elements_from_list_with_substring(links_google, "google")
+    links = remove_elements_from_list_with_substring(links, "youtube")
 
-        links_from_query += links  # save the collected links to the main list
+    print("Result set no.: found {} links_google for search query: {}".format(len(links), search_query))
 
-        open_next_pages_set(driver, google_result_set, number_of_results_sets_to_check)
+    links_from_query += links  # save the collected links_google to the main list
+
+    # open_next_pages_set(driver, result_set, number_of_results_sets_to_check)
 
     return links_from_query
 
@@ -180,7 +191,7 @@ def click_accept_cookies_button(driver, search_google_url):
 
 def run_scrapper(search_google_url, list_of_queries_to_search, number_of_results_sets_to_check, version):
     """
-    Search for query in Google search. Collect all the results and save their links into a list. Next, open each page
+    Search for query in Google search. Collect all the results and save their links_google into a list. Next, open each page
     and save its HTML source code. Finally, save the results of scrapping into a DataFrame and export it into a file
     with results.
 
@@ -192,7 +203,7 @@ def run_scrapper(search_google_url, list_of_queries_to_search, number_of_results
     :param version: the version of files where the results are saved
     """
     driver = webdriver.Chrome(ChromeDriverManager().install())
-    click_accept_cookies_button(driver, search_google_url)
+    # click_accept_cookies_button(driver, search_google_url)  # only for Google search
 
     for query in tqdm(list_of_queries_to_search):
         print("\nSTARTING SEARCH WITH QUERY: {}".format(query))
@@ -201,14 +212,14 @@ def run_scrapper(search_google_url, list_of_queries_to_search, number_of_results
 
         links_from_query = remove_duplicates_from_list(links_from_query)
 
-        # save backup of collected links
-        collected_links = {"links": links_from_query}
-        save_the_dictionary("links", collected_links, query, number_of_results_sets_to_check, version)
+        # save backup of collected links_google
+        collected_links = {"links_google": links_from_query}
+        save_the_dictionary("links_google", collected_links, query, number_of_results_sets_to_check, version)
 
         # # get html of each page
         # htmls_from_query = get_html_source_code_from_pages(driver, links_from_query)
         #
-        # # save the links with htmls into a Pandas DataFrame
+        # # save the links_google with htmls into a Pandas DataFrame
         # collected_links_with_html_code = {'link': links_from_query, 'html': htmls_from_query}
         #
         # save_the_dictionary("results", collected_links_with_html_code, query, number_of_results_sets_to_check, version)
@@ -218,8 +229,8 @@ def run_scrapper(search_google_url, list_of_queries_to_search, number_of_results
 
 
 if __name__ == '__main__':
-    search_google_url = "https://www.google.pl/search?q="
-    # search_google_url = "https://duckduckgo.com/?q="
+    # search_google_url = "https://www.google.pl/search?q="
+    search_google_url = "https://duckduckgo.com/?q="
 
     # adjust these parameters:
     # list_of_words_to_find_on_webpage = ["Politechnika Gdańska",
@@ -234,10 +245,9 @@ if __name__ == '__main__':
                                  "Google Scholar Politechnika Gdańska Wydział Zarządzania i Ekonomii"
                                  ]
 
-
     number_of_results_sets_to_check = 10  # number of "o"s to click at the bottom of the page in order to go to
     # another set of results
     version = 6  # the version of files where the results are saved
 
-    # get the links and html source code
+    # get the links_google and html source code
     run_scrapper(search_google_url, list_of_queries_to_search, number_of_results_sets_to_check, version)
